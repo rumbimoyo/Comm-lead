@@ -1,26 +1,200 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --navy: #0A2540;
+  --navy-light: #1B3A5C;
+  --navy-dark: #051937;
+  --gold: #D4A843;
+  --gold-light: #E8C977;
+  --gold-dark: #B8922E;
+  --off-white: #F8F9FC;
+  --muted: #6B7A90;
+  --white: #FDFDFD;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-navy: var(--navy);
+  --color-navy-light: var(--navy-light);
+  --color-navy-dark: var(--navy-dark);
+  --color-gold: var(--gold);
+  --color-gold-light: var(--gold-light);
+  --color-gold-dark: var(--gold-dark);
+  --color-off-white: var(--off-white);
+  --color-muted-text: var(--muted);
+  --color-dark-text: #1A1A2E;
+  --font-heading: var(--font-heading);
+  --font-body: var(--font-body-text);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
+/* ─── Base ──────────────────────────────────────────────────── */
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--white);
+  color: #1A1A2E;
+  font-family: var(--font-body-text), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+::selection {
+  background: var(--gold);
+  color: var(--navy);
+}
+
+/* ─── Typography ────────────────────────────────────────────── */
+.font-heading {
+  font-family: var(--font-heading), serif;
+}
+
+.text-gold-gradient,
+.text-gradient-gold {
+  background: linear-gradient(135deg, #B8922E 0%, #D4A843 40%, #E8C977 60%, #D4A843 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ─── Premium Glass Effect ──────────────────────────────────── */
+.premium-glass {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border-bottom: 1px solid rgba(10, 37, 64, 0.06);
+  box-shadow: 0 4px 30px rgba(10, 37, 64, 0.05);
+}
+
+.glass-dark {
+  background: rgba(10, 37, 64, 0.85);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(212, 168, 67, 0.12);
+}
+
+.glass {
+  background: rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* ─── Premium Cards ─────────────────────────────────────────── */
+.premium-card {
+  background: white;
+  border: 1px solid rgba(10, 37, 64, 0.06);
+  box-shadow: 0 1px 3px rgba(10, 37, 64, 0.04);
+  transition: all 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.premium-card:hover {
+  transform: translateY(-6px);
+  border-color: rgba(212, 168, 67, 0.3);
+  box-shadow: 0 24px 48px -12px rgba(10, 37, 64, 0.12), 0 0 0 1px rgba(212, 168, 67, 0.15);
+}
+
+.luxury-card {
+  background: white;
+  border: 1px solid rgba(10, 37, 64, 0.06);
+  box-shadow: 0 4px 6px -1px rgba(10, 37, 64, 0.03);
+  transition: all 0.4s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.luxury-card:hover {
+  box-shadow: 0 20px 40px -15px rgba(10, 37, 64, 0.12);
+}
+
+/* ─── Hero Overlay ──────────────────────────────────────────── */
+.hero-overlay {
+  background: linear-gradient(
+    135deg,
+    rgba(5, 25, 55, 0.92) 0%,
+    rgba(10, 37, 64, 0.8) 40%,
+    rgba(10, 37, 64, 0.65) 100%
+  );
+}
+
+/* ─── Navy Gradient Backgrounds ─────────────────────────────── */
+.bg-gradient-navy {
+  background: linear-gradient(135deg, #051937 0%, #0A2540 50%, #1B3A5C 100%);
+}
+
+/* ─── Glow Effects ──────────────────────────────────────────── */
+.glow-gold {
+  box-shadow: 0 0 40px rgba(212, 168, 67, 0.15), 0 0 80px rgba(212, 168, 67, 0.05);
+}
+
+.glow-navy {
+  box-shadow: 0 0 40px rgba(10, 37, 64, 0.2);
+}
+
+/* ─── Shimmer Animation ─────────────────────────────────────── */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent, rgba(212, 168, 67, 0.08), transparent);
+  background-size: 200% 100%;
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* ─── Float Animation ───────────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-12px); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+/* ─── Smooth scroll offset for anchors ──────────────────────── */
+html {
+  scroll-padding-top: 6rem;
+}
+
+/* ─── Image wow frames ──────────────────────────────────────── */
+.image-frame {
+  position: relative;
+  overflow: hidden;
+  border-radius: 1.5rem;
+}
+
+.image-frame::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid rgba(212, 168, 67, 0.15);
+  pointer-events: none;
+}
+
+.image-frame img {
+  transition: transform 0.7s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.image-frame:hover img {
+  transform: scale(1.05);
+}
+
+/* ─── Divider line ──────────────────────────────────────────── */
+.gold-divider {
+  width: 60px;
+  height: 3px;
+  background: linear-gradient(90deg, var(--gold), var(--gold-light));
+  border-radius: 999px;
+}
+
+/* ─── Scrollbar ─────────────────────────────────────────────── */
+::-webkit-scrollbar {
+  width: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--off-white);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--navy);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--navy-light);
 }

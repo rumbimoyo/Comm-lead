@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Database Migration Test</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>CommLead Academy - Database Test</h1>
+    <div id="result">Testing...</div>
+
+    <script>
+        const supabaseUrl = 'https://ikzrwmusohlnqxxouhgo.supabase.co'
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlrenl3bXVzb2hsbnF4eG91aGdvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzY5NjQ4NjksImV4cCI6MjA1MjU0MDg2OX0.8vT2VfHaU0nZkM6R_Pj6Lqf01Ih5k9s1PuDh6CpgEd8'
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey)
+
+        async function testDatabase() {
+            const result = document.getElementById('result')
+            result.innerHTML = '<h2>Testing Database...</h2>'
+
+            try {
+                // Test 1: Check if is_admin function exists
+                result.innerHTML += '<h3>Test 1: is_admin() function</h3>'
+                const { data: adminTest, error: adminError } = await supabase.rpc('is_admin')
+                
+                if (adminError) {
+                    result.innerHTML += `❌ FAILED: ${adminError.message}<br>`
+                    result.innerHTML += '🚨 <strong style="color: red;">MIGRATION NOT RUN - is_admin() function missing!</strong><br><br>'
+                } else {
+                    result.innerHTML += `✅ SUCCESS: is_admin() function exists, result: ${adminTest}<br><br>`
+                }
+
+                // Test 2: Check profiles table
+                result.innerHTML += '<h3>Test 2: profiles table</h3>'
+                const { data: profiles, error: profilesError } = await supabase
+                    .from('profiles')
+                    .select('id, role')
+                    .limit(1)
+                
+                if (profilesError) {
+                    result.innerHTML += `❌ FAILED: ${profilesError.message}<br>`
+                } else {
+                    result.innerHTML += `✅ SUCCESS: Found ${profiles?.length || 0} profiles<br><br>`
+                }
+
+                // Test 3: Check admin user
+                result.innerHTML += '<h3>Test 3: Admin user setup</h3>'
+                const { data: adminProfile, error: adminProfileError } = await supabase
+                    .from('profiles')
+                    .select('*')
+                    .eq('id', '92543f53-96b2-42e2-8bbd-20ba1eb9a9f6')
+                    .single()
+                
+                if (adminProfileError) {
+                    result.innerHTML += `❌ FAILED: ${adminProfileError.message}<br>`
+                } else {
+                    result.innerHTML += `✅ SUCCESS: Admin user found with role: ${adminProfile?.role}<br><br>`
+                }
+
+                // Summary
+                if (adminError) {
+                    result.innerHTML += `
+                        <div style="background: #fee; border: 2px solid red; padding: 20px; margin: 20px 0;">
+                            <h2 style="color: red;">❌ MIGRATION NOT RUN!</h2>
+                            <p><strong>The database migration has NOT been executed.</strong></p>
+                            <p>You must run the 004_complete_setup.sql file in Supabase SQL Editor.</p>
+                            <p><a href="https://supabase.com/dashboard/project/ikzrwmusohlnqxxouhgo/sql" target="_blank">Click here to open Supabase SQL Editor</a></p>
+                        </div>
+                    `
+                } else {
+                    result.innerHTML += `
+                        <div style="background: #efe; border: 2px solid green; padding: 20px; margin: 20px 0;">
+                            <h2 style="color: green;">✅ MIGRATION SUCCESSFUL!</h2>
+                            <p>Database is properly configured. Admin authentication should work now.</p>
+                        </div>
+                    `
+                }
+
+            } catch (error) {
+                result.innerHTML += `<div style="color: red;">Unexpected error: ${error.message}</div>`
+            }
+        }
+
+        testDatabase()
+    </script>
+</body>
+</html>
