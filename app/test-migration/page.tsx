@@ -81,7 +81,7 @@ export default function MigrationTest() {
           output += `❌ Failed to query all profiles: ${allProfilesError.message}\n\n`
         } else {
           output += `✅ Found ${allProfiles?.length || 0} total profiles:\n`
-          allProfiles?.forEach((p, i) => {
+          allProfiles?.forEach((p: { id: string; full_name: string | null; role: string; is_approved: boolean }, i: number) => {
             output += `   ${i + 1}. ${p.full_name} (${p.role}) - ${p.is_approved ? 'Approved' : 'Pending'}\n`
             output += `      ID: ${p.id}\n`
           })
