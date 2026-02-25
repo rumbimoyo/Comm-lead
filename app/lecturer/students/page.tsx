@@ -56,7 +56,7 @@ export default function LecturerStudentsPage() {
       .eq("lecturer_id", profile.id);
 
     // Handle Supabase join which may return array or single object
-    const progs = programLinks?.map((p: { program: Program | Program[] }) => {
+    const progs = programLinks?.map((p: any) => {
       return Array.isArray(p.program) ? p.program[0] : p.program;
     }).filter(Boolean) as Program[] || [];
     setPrograms(progs);
@@ -88,7 +88,7 @@ export default function LecturerStudentsPage() {
 
         const studentData: StudentWithEnrollment[] = enrollmentsRaw.map((e: EnrollmentRow & Record<string, unknown>) => ({
           student: (profilesMap.get(e.user_id) || null) as Profile,
-          enrollment: e,
+          enrollment: e as any,
           cohort: (cohortsMap.get(e.cohort_id) || null) as Cohort,
           program: (programsMap.get(e.program_id) || null) as Program,
         }));

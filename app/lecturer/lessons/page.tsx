@@ -53,7 +53,7 @@ export default function LecturerLessonsPage() {
       .eq("lecturer_id", profile.id);
 
     // Handle Supabase join which may return array or single object
-    const programs = programLinks?.map((p: { program: Program | Program[] }) => {
+    const programs = programLinks?.map((p: any) => {
       return Array.isArray(p.program) ? p.program[0] : p.program;
     }).filter(Boolean) as Program[] || [];
     setPrograms(programs);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { DashboardShell, type NavItem } from "@/components/layout/DashboardShell";
@@ -29,7 +29,7 @@ interface LessonWithRelations extends Lesson {
   progress?: LessonProgress;
 }
 
-export default function StudentLessonsPage() {
+function StudentLessonsContent() {
   const { profile, isLoading, signOut } = useAuth("student");
   const searchParams = useSearchParams();
   const programFilter = searchParams.get("program") || "";
@@ -60,7 +60,7 @@ export default function StudentLessonsPage() {
       .in("status", ["approved", "completed"]);
 
     // Handle Supabase join which may return array or single object
-    const progs = enrollments?.map((e: { program: Program | Program[] }) => {
+    const progs = enrollments?.map((e: any) => {
       return Array.isArray(e.program) ? e.program[0] : e.program;
     }).filter(Boolean) as Program[] || [];
     setPrograms(progs);
@@ -353,5 +353,13 @@ export default function StudentLessonsPage() {
         )}
       </div>
     </DashboardShell>
+  );
+}
+
+export default function StudentLessonsPage() {
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <StudentLessonsContent />
+    </Suspense>
   );
 }

@@ -60,12 +60,12 @@ export default function StudentAssignmentsPage() {
       .in("status", ["approved", "completed"]);
 
     // Handle Supabase join which may return array or single object
-    const progs = enrollments?.map((e: { program: Program | Program[] }) => {
+    const progs = enrollments?.map((e: any) => {
       return Array.isArray(e.program) ? e.program[0] : e.program;
     }).filter(Boolean) as Program[] || [];
     setPrograms(progs);
     const programIds = progs.map((p) => p.id);
-    const cohortIds = enrollments?.map((e: { cohort_id?: string }) => e.cohort_id).filter(Boolean) || [];
+    const cohortIds = enrollments?.map((e: any) => e.cohort_id).filter(Boolean) || [];
 
     if (programIds.length > 0) {
       // Get assignments (either for program or specific cohort)
