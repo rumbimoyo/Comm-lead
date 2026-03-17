@@ -13,54 +13,6 @@ interface AuthState {
   isAuthenticated: boolean;
 }
 
-const PROFILE_CACHE_PREFIX = "commlead_profile_cache:";
-const PROFILE_CACHE_TTL_MS = 5 * 60 * 1000;
-
-function getCachedProfile(userId: string): Profile | null {
-  try {
-    const raw = sessionStorage.getItem(`${PROFILE_CACHE_PREFIX}${userId}`);
-    if (!raw) return null;
-
-    const parsed = JSON.parse(raw) as { profile: Profile; cachedAt: number };
-    if (!parsed?.profile || !parsed?.cachedAt) return null;
-
-    if (Date.now() - parsed.cachedAt > PROFILE_CACHE_TTL_MS) {
-      sessionStorage.removeItem(`${PROFILE_CACHE_PREFIX}${userId}`);
-      return null;
-    }
-
-    return parsed.profile;
-  } catch {
-    return null;
-  }
-}
-
-function setCachedProfile(profile: Profile) {
-  try {
-    sessionStorage.setItem(
-      `${PROFILE_CACHE_PREFIX}${profile.id}`,
-      JSON.stringify({ profile, cachedAt: Date.now() })
-    );
-  } catch {
-    // ignore cache write failures
-  }
-}
-
-function clearProfileCache() {
-  try {
-    const keys: string[] = [];
-    for (let index = 0; index < sessionStorage.length; index += 1) {
-      const key = sessionStorage.key(index);
-      if (key?.startsWith(PROFILE_CACHE_PREFIX)) {
-        keys.push(key);
-      }
-    }
-    keys.forEach((key) => sessionStorage.removeItem(key));
-  } catch {
-    // ignore cache clear failures
-  }
-}
-
 export function useAuth(requiredRole?: UserRole | UserRole[]) {
   const [state, setState] = useState<AuthState>({
     user: null,
@@ -96,9 +48,7 @@ export function useAuth(requiredRole?: UserRole | UserRole[]) {
         return null;
       }
 
-      const profile = data as Profile;
-      setCachedProfile(profile);
-      return profile;
+      return data as Profile;
     } catch (err) {
       // Ignore AbortError - happens during React Strict Mode remounts
       if (err instanceof Error && err.name === 'AbortError') {
@@ -159,24 +109,6 @@ export function useAuth(requiredRole?: UserRole | UserRole[]) {
             }
           }
           return;
-        }
-
-        const cachedProfile = getCachedProfile(user.id);
-        if (cachedProfile && mountedRef.current) {
-          if (requiredRole) {
-            const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
-            if (!allowedRoles.includes(cachedProfile.role)) {
-              router.push(getRedirectPath(cachedProfile.role));
-              return;
-            }
-          }
-
-          setState({
-            user,
-            profile: cachedProfile,
-            isLoading: false,
-            isAuthenticated: true,
-          });
         }
 
         const profile = await fetchProfile(user.id);
@@ -243,16 +175,6 @@ export function useAuth(requiredRole?: UserRole | UserRole[]) {
           setState({ user: null, profile: null, isLoading: false, isAuthenticated: false });
           // Don't redirect here - let signOut function handle it
         } else if (event === "SIGNED_IN" && session?.user) {
-          const cachedProfile = getCachedProfile(session.user.id);
-          if (cachedProfile && mountedRef.current) {
-            setState({
-              user: session.user,
-              profile: cachedProfile,
-              isLoading: false,
-              isAuthenticated: true,
-            });
-          }
-
           const profile = await fetchProfile(session.user.id);
           if (mountedRef.current) {
             const fallbackRole = getRoleFromUser(session.user);
@@ -294,7 +216,6 @@ export function useAuth(requiredRole?: UserRole | UserRole[]) {
     
     try {
       await supabase.auth.signOut();
-      clearProfileCache();
     } catch (error) {
       console.error("Sign out error:", error);
     }
