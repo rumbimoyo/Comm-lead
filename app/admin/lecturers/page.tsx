@@ -26,6 +26,7 @@ const adminNavigation: NavItem[] = [
 
 interface LecturerWithPrograms extends Profile {
   programs?: Array<{ program: Program; is_lead: boolean }>;
+  sourceRole?: "lecturer" | "student";
 }
 
 export default function LecturersPage() {
@@ -51,11 +52,20 @@ export default function LecturersPage() {
     const { data, error } = await supabase
       .from("profiles")
       .select("*")
-      .eq("role", "lecturer")
+      .in("role", ["lecturer", "student"])
       .order("full_name");
 
     if (!error && data) {
-      setLecturers(data as LecturerWithPrograms[]);
+      const lecturerRows = (data as Profile[]).filter(
+        (row) => row.role === "lecturer" || (row.role === "student" && !row.is_approved)
+      );
+
+      const normalized = lecturerRows.map((row) => ({
+        ...row,
+        sourceRole: row.role === "lecturer" ? "lecturer" : "student",
+      }));
+
+      setLecturers(normalized as LecturerWithPrograms[]);
     }
     setDataLoading(false);
   };
@@ -81,6 +91,15 @@ export default function LecturersPage() {
   const handleApprove = async (lecturerId: string) => {
     if (!supabase) return;
     await supabase.from("profiles").update({ is_approved: true, is_active: true }).eq("id", lecturerId);
+    fetchLecturers();
+  };
+
+  const handleApproveAsLecturer = async (profileId: string) => {
+    if (!supabase) return;
+    await supabase
+      .from("profiles")
+      .update({ role: "lecturer", is_approved: true, is_active: true })
+      .eq("id", profileId);
     fetchLecturers();
   };
 
@@ -124,9 +143,36 @@ export default function LecturersPage() {
           phone: editingLecturer.phone,
           specialization: editingLecturer.specialization,
           bio: editingLecturer.bio,
+          role: "lecturer",
+          is_approved: true,
           is_active: editingLecturer.is_active,
         })
         .eq("id", editingLecturer.id);
+    } else {
+      const { data: existingProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("email", editingLecturer.email)
+        .maybeSingle();
+
+      if (!existingProfile) {
+        alert("No registered user found with this email. Ask them to register first, then approve here.");
+        setSaving(false);
+        return;
+      }
+
+      await supabase
+        .from("profiles")
+        .update({
+          full_name: editingLecturer.full_name,
+          phone: editingLecturer.phone,
+          specialization: editingLecturer.specialization,
+          bio: editingLecturer.bio,
+          role: "lecturer",
+          is_approved: true,
+          is_active: true,
+        })
+        .eq("id", existingProfile.id);
     }
 
     setSaving(false);
@@ -156,8 +202,8 @@ export default function LecturersPage() {
 
       <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
         <p className="text-sm text-blue-800">
-          <strong>Note:</strong> Lecturers must register and be approved before they can access the system. 
-          Review pending applications below.
+          <strong>Note:</strong> If a lecturer signup came in as a student role, approve them here using
+          <strong> Approve as Lecturer</strong>.
         </p>
       </div>
 
@@ -209,6 +255,15 @@ export default function LecturersPage() {
               ),
             },
             {
+              key: "accountType",
+              label: "Account Type",
+              render: (item: LecturerWithPrograms) => (
+                <span className={`text-xs px-2 py-1 rounded-full ${item.sourceRole === "student" ? "bg-amber-100 text-amber-700" : "bg-purple-100 text-purple-700"}`}>
+                  {item.sourceRole === "student" ? "Student (Needs Promotion)" : "Lecturer"}
+                </span>
+              ),
+            },
+            {
               key: "phone",
               label: "Phone",
               render: (item: LecturerWithPrograms) => (
@@ -230,6 +285,11 @@ export default function LecturersPage() {
               label: "Actions",
               render: (item: LecturerWithPrograms) => (
                 <div className="flex gap-2">
+                  {item.sourceRole === "student" && (
+                    <Button size="sm" onClick={() => handleApproveAsLecturer(item.id)}>
+                      <CheckCircle size={14} className="mr-1" /> Approve as Lecturer
+                    </Button>
+                  )}
                   {!item.is_approved && (
                     <Button size="sm" onClick={() => handleApprove(item.id)}>
                       <CheckCircle size={14} className="mr-1" /> Approve
