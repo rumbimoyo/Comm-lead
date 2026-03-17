@@ -86,6 +86,10 @@ export default function StudentRegisterPage() {
 
       if (authError) {
         console.error("Auth signup error:", authError);
+        const authMessage = authError.message?.toLowerCase() || "";
+        if (authMessage.includes("rate limit") || authMessage.includes("too many requests")) {
+          throw new Error("Email rate limit reached. Please wait 5-15 minutes and try again, or ask admin to increase Supabase Auth email rate limits.");
+        }
         throw new Error(authError.message);
       }
       if (!authData.user) throw new Error("Registration failed - no user returned");
