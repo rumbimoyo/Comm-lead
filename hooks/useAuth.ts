@@ -36,7 +36,7 @@ export function useAuth(requiredRole?: UserRole | UserRole[]) {
         .from("profiles")
         .select("*")
         .eq("id", userId)
-        .single();
+        .maybeSingle();
 
       if (error) {
         // PGRST116 = Row not found, which is expected for new users who haven't set up their profile
@@ -59,6 +59,37 @@ export function useAuth(requiredRole?: UserRole | UserRole[]) {
     }
   }, [supabase]);
 
+  const getRoleFromUser = useCallback((user: User): UserRole | null => {
+    const rawRole = user.user_metadata?.role || user.app_metadata?.role;
+    if (rawRole === "student" || rawRole === "lecturer" || rawRole === "admin" || rawRole === "super_admin") {
+      return rawRole as UserRole;
+    }
+    return null;
+  }, []);
+
+  const buildFallbackProfile = useCallback((user: User, role?: UserRole | null): Profile => {
+    const resolvedRole = role || getRoleFromUser(user) || "student";
+    return {
+      id: user.id,
+      email: user.email || "",
+      full_name: user.user_metadata?.full_name || user.email?.split("@")[0] || "User",
+      phone: user.user_metadata?.phone || null,
+      address: null,
+      city: null,
+      country: null,
+      avatar_url: null,
+      role: resolvedRole,
+      bio: null,
+      specialization: null,
+      linkedin_url: null,
+      twitter_url: null,
+      is_approved: resolvedRole === "admin" || resolvedRole === "super_admin",
+      is_active: true,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+  }, [getRoleFromUser]);
+
   useEffect(() => {
     // Prevent multiple initializations
     if (initializingRef.current) return;
@@ -67,7 +98,8 @@ export function useAuth(requiredRole?: UserRole | UserRole[]) {
 
     async function initAuth() {
       try {
-        const { data: { user }, error } = await supabase.auth.getUser();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        const user = session?.user || null;
 
         if (error || !user) {
           if (mountedRef.current) {
@@ -103,9 +135,19 @@ export function useAuth(requiredRole?: UserRole | UserRole[]) {
             isAuthenticated: true,
           });
         } else {
+          const metadataRole = getRoleFromUser(user);
+
+          if (requiredRole && metadataRole) {
+            const allowedRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+            if (!allowedRoles.includes(metadataRole)) {
+              router.push(getRedirectPath(metadataRole));
+              return;
+            }
+          }
+
           setState({
             user,
-            profile: null,
+            profile: buildFallbackProfile(user, metadataRole),
             isLoading: false,
             isAuthenticated: true,
           });
@@ -135,9 +177,10 @@ export function useAuth(requiredRole?: UserRole | UserRole[]) {
         } else if (event === "SIGNED_IN" && session?.user) {
           const profile = await fetchProfile(session.user.id);
           if (mountedRef.current) {
+            const fallbackRole = getRoleFromUser(session.user);
             setState({
               user: session.user,
-              profile,
+              profile: profile || buildFallbackProfile(session.user, fallbackRole),
               isLoading: false,
               isAuthenticated: true,
             });
@@ -159,7 +202,7 @@ export function useAuth(requiredRole?: UserRole | UserRole[]) {
       initializingRef.current = false;
       subscription.unsubscribe();
     };
-  }, [supabase, requiredRole, router, fetchProfile]);
+  }, [supabase, requiredRole, router, fetchProfile, getRoleFromUser, buildFallbackProfile]);
 
   // Use ref to track sign out in progress to prevent duplicate calls
   const signingOutRef = useRef(false);

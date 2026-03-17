@@ -75,62 +75,31 @@ export default function LecturerRegisterPage() {
       }
       if (!authData.user) throw new Error("Registration failed - no user returned");
 
-      // 2. Wait for trigger to create profile
-      await new Promise(resolve => setTimeout(resolve, 1500));
-
-      // 3. Try to update profile - if trigger failed, try UPSERT
-      let profileUpdated = false;
-      
-      // First try UPDATE
-      const { error: updateError, data: updateData } = await supabase
-        .from("profiles")
-        .update({
-          full_name: form.fullName,
-          phone: form.phone,
-          role: "lecturer",
-          bio: form.bio,
-          specialization: form.specialization,
-          is_approved: false,
-          is_active: true,
-        })
-        .eq("id", authData.user.id)
-        .select();
-
-      if (!updateError && updateData && updateData.length > 0) {
-        profileUpdated = true;
-      } else {
-        console.warn("Update failed, trying UPSERT:", updateError);
-        // Fallback: Try UPSERT (insert with conflict handling)
-        const { error: upsertError } = await supabase
+      // 2. If email confirmation is disabled and session exists, update optional fields only.
+      // Role is set by the auth trigger using user metadata.
+      if (authData.session?.user) {
+        const { error: updateError } = await supabase
           .from("profiles")
-          .upsert({
-            id: authData.user.id,
-            email: form.email,
+          .update({
             full_name: form.fullName,
             phone: form.phone,
-            role: "lecturer",
             bio: form.bio,
             specialization: form.specialization,
-            is_approved: false,
-            is_active: true,
-          }, { onConflict: 'id' });
+          })
+          .eq("id", authData.user.id);
 
-        if (upsertError) {
-          console.error("Profile upsert error:", upsertError);
-          // Don't throw - auth user is created, admin can fix profile later
-        } else {
-          profileUpdated = true;
+        if (updateError) {
+          console.warn("Optional lecturer profile enrichment failed:", updateError.message);
         }
-      }
-
-      if (!profileUpdated) {
-        console.warn("Profile creation may have failed - admin will need to verify");
       }
 
       setSuccess(true);
     } catch (err: unknown) {
       console.error("Registration error:", err);
-      const errorMessage = err instanceof Error ? err.message : "Registration failed. Please try again.";
+      const rawMessage = err instanceof Error ? err.message : "Registration failed. Please try again.";
+      const errorMessage = rawMessage.toLowerCase().includes("database error saving new user")
+        ? "Lecturer signup is blocked by database role settings. Run migration 010_role_fix_and_content.sql in Supabase, then try again."
+        : rawMessage;
       setError(errorMessage);
     } finally {
       setLoading(false);

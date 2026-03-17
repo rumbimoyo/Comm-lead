@@ -74,34 +74,14 @@ export default function LoginPage() {
         return;
       }
 
-      // Check user role from profiles table
+      const metadataRole = data.user.user_metadata?.role as string | undefined;
+
+      // Check user role from profiles table (fallback to metadata)
       const { data: profile, error: profileError } = await supabase
         .from("profiles")
         .select("role, is_approved")
         .eq("id", data.user.id)
-        .single();
-
-      if (profileError) {
-        // Ignore AbortError
-        if (profileError.message?.includes('AbortError') || profileError.message?.includes('aborted')) {
-          console.log("AbortError during profile fetch - ignoring");
-          return;
-        }
-        
-        // Handle RLS or empty error - redirect to dashboard
-        if (profileError.message?.includes('RLS') || profileError.message?.includes('policy') || Object.keys(profileError).length === 0) {
-          console.log("RLS/empty error - redirecting to dashboard");
-          window.location.href = "/dashboard";
-          return;
-        }
-        
-        // Log actual errors
-        console.error("Profile error:", profileError);
-        if (mountedRef.current) {
-          setError(`Database error: ${profileError.message || 'Unable to access profile'}`);
-        }
-        return;
-      }
+        .maybeSingle();
 
       if (profile) {
         console.log("Profile data:", profile);
@@ -117,19 +97,28 @@ export default function LoginPage() {
         }
 
         // Route based on role
-        if (profile.role === "admin" || profile.role === "super_admin") {
-          console.log("Redirecting to admin dashboard");
-          window.location.href = "/admin";
-        } else if (profile.role === "lecturer") {
-          console.log("Redirecting to lecturer dashboard");
-          window.location.href = "/lecturer";
-        } else {
-          console.log("Redirecting to student dashboard");
-          window.location.href = "/dashboard";
-        }
+        const destination =
+          profile.role === "admin" || profile.role === "super_admin"
+            ? "/admin"
+            : profile.role === "lecturer"
+              ? "/lecturer"
+              : "/dashboard";
+        router.replace(destination);
+        return;
       } else {
-        console.log("No profile found, redirecting to dashboard");
-        window.location.href = "/dashboard";
+        if (profileError) {
+          console.warn("Profile lookup failed, using metadata fallback:", profileError.message);
+        }
+
+        const destination =
+          metadataRole === "admin" || metadataRole === "super_admin"
+            ? "/admin"
+            : metadataRole === "lecturer"
+              ? "/lecturer"
+              : "/dashboard";
+
+        router.replace(destination);
+        return;
       }
     } catch (err: unknown) {
       // Ignore AbortError
