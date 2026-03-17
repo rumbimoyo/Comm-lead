@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Menu, X, LogOut, Bell, ChevronRight, 
@@ -36,13 +36,6 @@ export function DashboardShell({
 }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const router = useRouter();
-
-  useEffect(() => {
-    navigation.forEach((item) => {
-      router.prefetch(item.href);
-    });
-  }, [navigation, router]);
 
   const initials = profile?.full_name
     ?.split(" ")
@@ -83,7 +76,6 @@ export function DashboardShell({
               <Link
                 key={item.href}
                 href={item.href}
-                prefetch
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all relative group ${
                   isActive
                     ? "bg-white/15 text-white font-semibold"
@@ -187,7 +179,6 @@ export function DashboardShell({
                     <Link
                       key={item.href}
                       href={item.href}
-                      prefetch
                       onClick={() => setSidebarOpen(false)}
                       className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                         isActive
