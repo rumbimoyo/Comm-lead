@@ -98,7 +98,7 @@ export default function LecturerRegisterPage() {
       console.error("Registration error:", err);
       const rawMessage = err instanceof Error ? err.message : "Registration failed. Please try again.";
       const errorMessage = rawMessage.toLowerCase().includes("database error saving new user")
-        ? "Lecturer signup is blocked by database role settings. Run migration 014_fix_lecturer_signup_block.sql in Supabase (or 010_role_fix_and_content.sql), then try again."
+        ? "Lecturer signup is blocked by your DB trigger/schema. Run migration 015_emergency_unblock_signup_trigger.sql in Supabase, then try again."
         : rawMessage;
       setError(errorMessage);
     } finally {
