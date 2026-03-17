@@ -39,12 +39,22 @@ interface AssignmentWithProgram extends Assignment {
   program?: Program;
 }
 
+interface UserNotification {
+  id: string;
+  title: string;
+  message: string;
+  target_role: "all" | "students" | "lecturers" | "admins";
+  cohort_id: string | null;
+  created_at: string;
+}
+
 export default function StudentDashboardPage() {
   const { profile, isLoading, signOut } = useAuth("student");
   const [enrollments, setEnrollments] = useState<EnrollmentWithRelations[]>([]);
   const [pendingAssignments, setPendingAssignments] = useState<AssignmentWithProgram[]>([]);
   const [upcomingLessons, setUpcomingLessons] = useState<Lesson[]>([]);
   const [announcements, setAnnouncements] = useState<Announcement[]>([]);
+  const [notifications, setNotifications] = useState<UserNotification[]>([]);
   const [cohortLecturers, setCohortLecturers] = useState<Record<string, Array<{ lecturer: Profile; is_lead: boolean }>>>({});
   const [dataLoading, setDataLoading] = useState(true);
 
@@ -126,6 +136,19 @@ export default function StudentDashboardPage() {
       .limit(3);
 
     setAnnouncements(announcementData || []);
+
+    const { data: notificationData } = await supabase
+      .from("notifications")
+      .select("id, title, message, target_role, cohort_id, created_at")
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    const filteredNotifications = (notificationData as UserNotification[] | null)?.filter((item) => {
+      if (!item.cohort_id) return true;
+      return cohortIds.includes(item.cohort_id);
+    }) || [];
+
+    setNotifications(filteredNotifications);
 
     setDataLoading(false);
   };
@@ -319,6 +342,34 @@ export default function StudentDashboardPage() {
                     <p className="text-sm text-gray-600 mt-1">{announcement.content}</p>
                     <p className="text-xs text-gray-500 mt-2">
                       {new Date(announcement.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {notifications.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Notifications</h2>
+          <div className="space-y-3">
+            {notifications.map((notification, idx) => (
+              <motion.div
+                key={notification.id}
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.1 }}
+                className="p-4 rounded-lg border bg-indigo-50 border-indigo-200"
+              >
+                <div className="flex items-start gap-3">
+                  <AlertCircle size={18} className="text-indigo-600" />
+                  <div>
+                    <h3 className="font-medium text-gray-900">{notification.title}</h3>
+                    <p className="text-sm text-gray-600 mt-1">{notification.message}</p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {new Date(notification.created_at).toLocaleDateString()}
                     </p>
                   </div>
                 </div>
