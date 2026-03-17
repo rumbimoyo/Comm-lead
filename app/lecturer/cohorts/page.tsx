@@ -51,6 +51,7 @@ export default function LecturerCohortsPage() {
   const [editingMaterial, setEditingMaterial] = useState<Partial<CohortMaterial> | null>(null);
   const [editingTask, setEditingTask] = useState<Partial<CohortTask> | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingMaterial, setUploadingMaterial] = useState(false);
 
   useEffect(() => {
     if (profile) fetchCohorts();
@@ -139,7 +140,17 @@ export default function LecturerCohortsPage() {
     if (editingAnnouncement.id) {
       await supabase.from("cohort_announcements").update(payload).eq("id", editingAnnouncement.id);
     } else {
-      await supabase.from("cohort_announcements").insert(payload);
+      const { error: insertError } = await supabase.from("cohort_announcements").insert(payload);
+
+      if (!insertError) {
+        await supabase.from("notifications").insert({
+          title: editingAnnouncement.title,
+          message: editingAnnouncement.content || "New cohort announcement",
+          target_role: "students",
+          cohort_id: selectedCohort.id,
+          created_by: profile.id,
+        });
+      }
     }
 
     setSaving(false);
@@ -201,6 +212,40 @@ export default function LecturerCohortsPage() {
     const supabase = createSupabaseBrowserClient();
     await supabase.from("cohort_materials").update({ is_published: !material.is_published }).eq("id", material.id);
     fetchCohortContent();
+  };
+
+  const handleMaterialFileUpload = async (file: File) => {
+    if (!profile || !selectedCohort) return;
+
+    setUploadingMaterial(true);
+    const supabase = createSupabaseBrowserClient();
+    const safeName = file.name.replace(/\s+/g, "-").replace(/[^a-zA-Z0-9._-]/g, "");
+    const filePath = `${profile.id}/${selectedCohort.id}/${Date.now()}-${safeName}`;
+
+    const candidateBuckets = ["cohort-materials", "images"];
+    let publicUrl: string | null = null;
+    let uploadError: string | null = null;
+
+    for (const bucket of candidateBuckets) {
+      const { error } = await supabase.storage.from(bucket).upload(filePath, file, { upsert: false });
+      if (!error) {
+        publicUrl = supabase.storage.from(bucket).getPublicUrl(filePath).data.publicUrl;
+        break;
+      }
+      uploadError = error.message;
+    }
+
+    if (!publicUrl) {
+      alert(`Upload failed: ${uploadError || "Unable to upload file"}`);
+      setUploadingMaterial(false);
+      return;
+    }
+
+    setEditingMaterial((prev) => ({
+      ...(prev || {}),
+      file_url: publicUrl,
+    }));
+    setUploadingMaterial(false);
   };
 
   // ─── TASK HANDLERS ─────────────────────────────────────────────────────────
@@ -704,6 +749,23 @@ export default function LecturerCohortsPage() {
                 onChange={(e) => setEditingMaterial({ ...editingMaterial, file_url: e.target.value })}
                 placeholder="https://.../file.pdf"
               />
+            </FormField>
+            <FormField label="Upload File (PPT, PDF, Notes)" id="mat-upload">
+              <input
+                id="mat-upload"
+                type="file"
+                accept=".ppt,.pptx,.pdf,.doc,.docx,.txt,.zip,.rar,.md"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    void handleMaterialFileUpload(file);
+                  }
+                }}
+                className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
+              />
+              {uploadingMaterial && (
+                <p className="text-xs text-gray-500 mt-2">Uploading file...</p>
+              )}
             </FormField>
             <FormField label="External Link" id="mat-link">
               <Input

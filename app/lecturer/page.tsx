@@ -7,10 +7,10 @@ import { StatCard, DataTable, PageHeader, PageLoader } from "@/components/dashbo
 import { createSupabaseBrowserClient } from "@/utils/supabase-browser";
 import {
   Home, BookOpen, Users, FileText, ClipboardList, Calendar,
-  Settings, MessageSquare, CheckSquare
+  Settings, MessageSquare, CheckSquare, AlertCircle
 } from "lucide-react";
 import Link from "next/link";
-import type { Program, Cohort, Enrollment, Profile } from "@/types/database";
+import type { Program, Cohort, Enrollment, Profile, Announcement } from "@/types/database";
 
 const lecturerNavigation: NavItem[] = [
   { href: "/lecturer", label: "Dashboard", icon: Home },
@@ -48,6 +48,7 @@ export default function LecturerDashboardPage() {
   });
   const [recentStudents, setRecentStudents] = useState<RecentStudent[]>([]);
   const [myPrograms, setMyPrograms] = useState<Program[]>([]);
+  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
   const [dataLoading, setDataLoading] = useState(true);
 
   useEffect(() => {
@@ -122,6 +123,17 @@ export default function LecturerDashboardPage() {
         setRecentStudents(recentStudentsData);
       }
     }
+
+    const { data: announcementData } = await supabase
+      .from("announcements")
+      .select("*")
+      .eq("is_published", true)
+      .or("target_audience.eq.all,target_audience.eq.lecturers")
+      .order("is_pinned", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(4);
+
+    setAnnouncements((announcementData as Announcement[]) || []);
 
     setDataLoading(false);
   };
@@ -216,6 +228,46 @@ export default function LecturerDashboardPage() {
           </div>
         </Link>
       </div>
+
+      {announcements.length > 0 && (
+        <div className="mb-8">
+          <h2 className="text-lg font-semibold text-gray-900 mb-4">Admin Notifications</h2>
+          <div className="space-y-3">
+            {announcements.map((announcement) => (
+              <div
+                key={announcement.id}
+                className={`p-4 rounded-lg border ${
+                  announcement.priority === "urgent"
+                    ? "bg-red-50 border-red-200"
+                    : announcement.priority === "high"
+                    ? "bg-amber-50 border-amber-200"
+                    : "bg-purple-50 border-purple-200"
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  <AlertCircle
+                    size={18}
+                    className={
+                      announcement.priority === "urgent"
+                        ? "text-red-600"
+                        : announcement.priority === "high"
+                        ? "text-amber-600"
+                        : "text-purple-600"
+                    }
+                  />
+                  <div>
+                    <h3 className="font-medium text-gray-900">{announcement.title}</h3>
+                    <p className="text-sm text-gray-600 mt-1">{announcement.content}</p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      {new Date(announcement.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* My Programs */}
       <div className="mb-8">

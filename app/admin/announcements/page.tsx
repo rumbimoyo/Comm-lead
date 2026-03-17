@@ -85,7 +85,23 @@ export default function AnnouncementsPage() {
     if (editing.id) {
       await supabase.from("announcements").update(data).eq("id", editing.id);
     } else {
-      await supabase.from("announcements").insert(data);
+      const { error: insertError } = await supabase.from("announcements").insert(data);
+
+      if (!insertError) {
+        const targetRole =
+          editing.target_audience === "lecturers"
+            ? "lecturers"
+            : editing.target_audience === "students"
+              ? "students"
+              : "all";
+
+        await supabase.from("notifications").insert({
+          title: editing.title,
+          message: editing.content,
+          target_role: targetRole,
+          created_by: profile.id,
+        });
+      }
     }
 
     setSaving(false);

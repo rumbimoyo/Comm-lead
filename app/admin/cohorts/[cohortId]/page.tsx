@@ -125,18 +125,16 @@ export default function CohortDetailPage() {
   }, [cohortId]);
 
   const fetchAvailableStudents = useCallback(async () => {
-    console.log("fetchAvailableStudents called, cohort:", cohort?.id);
     if (!cohort) return;
     
     try {
-      // Get all enrollments without a cohort assigned (pending or approved)
+      // Get approved enrollments for the same program that are not yet in a cohort
       const { data: unassignedEnrollments, error } = await supabase
         .from("enrollments")
         .select("*")
         .is("cohort_id", null)
-        .in("status", ["pending", "approved"]);
-
-      console.log("Available enrollments query result:", { count: unassignedEnrollments?.length, error });
+        .eq("program_id", cohort.program_id)
+        .eq("status", "approved");
 
       if (error) {
         console.error("Error fetching unassigned enrollments:", error);
@@ -163,7 +161,8 @@ export default function CohortDetailPage() {
             ...e,
             student: profilesMap.get(e.user_id) || null,
             program: programsMap.get(e.program_id) || null,
-          }));
+          }))
+          .filter((e) => e.student?.is_approved && e.student?.is_active);
 
         setAvailableStudents(enriched as EnrollmentWithStudent[]);
       } else {
@@ -181,6 +180,7 @@ export default function CohortDetailPage() {
         .from("profiles")
         .select("*")
         .eq("role", "lecturer")
+        .eq("is_approved", true)
         .eq("is_active", true);
 
       const assignedIds = lecturers.map(l => l.lecturer_id);
@@ -280,12 +280,13 @@ export default function CohortDetailPage() {
       if (!cohort) return;
       
       try {
-        // Get all enrollments without a cohort assigned (pending or approved)
+        // Get approved enrollments for the same program that are not yet in a cohort
         const { data: unassignedEnrollments } = await supabase
           .from("enrollments")
           .select("*")
           .is("cohort_id", null)
-          .in("status", ["pending", "approved"]);
+          .eq("program_id", cohort.program_id)
+          .eq("status", "approved");
 
         if (!isMounted) return;
 
@@ -310,7 +311,8 @@ export default function CohortDetailPage() {
                 ...e,
                 student: profilesMap.get(e.user_id) || null,
                 program: programsMap.get(e.program_id) || null,
-              }));
+              }))
+              .filter((e) => e.student?.is_approved && e.student?.is_active);
 
             setAvailableStudents(enriched as EnrollmentWithStudent[]);
           }
@@ -358,23 +360,24 @@ export default function CohortDetailPage() {
 
   // Add student to cohort
   const handleAddStudent = async () => {
-    console.log("handleAddStudent called, selectedEnrollmentId:", selectedEnrollmentId);
+    if (!cohort) return;
     if (!selectedEnrollmentId) {
-      console.log("No enrollment selected");
+      return;
+    }
+
+    if (students.length >= cohort.max_students) {
+      alert("This cohort is full. Increase capacity to add more students.");
       return;
     }
     setSaving(true);
 
     try {
-      console.log("Updating enrollment to cohort:", cohortId);
       // Update the enrollment to assign to cohort and approve if pending
       const { error, data } = await supabase
         .from("enrollments")
         .update({ cohort_id: cohortId, status: "approved" })
         .eq("id", selectedEnrollmentId)
         .select();
-
-      console.log("Student add result:", { error, data });
 
       if (error) {
         console.error("Supabase error adding student:", error);
@@ -426,15 +429,12 @@ export default function CohortDetailPage() {
 
   // Add lecturer to cohort
   const handleAddLecturer = async () => {
-    console.log("handleAddLecturer called, selectedLecturerId:", selectedLecturerId);
     if (!selectedLecturerId) {
-      console.log("No lecturer selected");
       return;
     }
     setSaving(true);
 
     try {
-      console.log("Inserting cohort_lecturer:", { cohort_id: cohortId, lecturer_id: selectedLecturerId });
       const { error, data } = await supabase
         .from("cohort_lecturers")
         .insert({
@@ -443,8 +443,6 @@ export default function CohortDetailPage() {
           is_lead: lecturers.length === 0, // First lecturer is lead
         })
         .select();
-
-      console.log("Lecturer add result:", { error, data });
 
       if (error) {
         console.error("Supabase error adding lecturer:", error);
@@ -744,20 +742,10 @@ export default function CohortDetailPage() {
                   }))}
                 />
               </FormField>
-              <div className="mt-2 text-xs text-gray-500">
-                Debug: {availableStudents.map(s => `${s.student?.full_name}:${s.status}`).join(', ')}
-              </div>
             </div>
           )}
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button 
-              variant="secondary" 
-              size="sm"
-              onClick={() => {
-                console.log("Manual refresh triggered");
-                fetchAvailableStudents();
-              }}
-            >
+            <Button variant="secondary" size="sm" onClick={() => fetchAvailableStudents()}>
               Refresh Students
             </Button>
             <Button variant="secondary" onClick={() => setShowAddStudent(false)}>
@@ -818,20 +806,10 @@ export default function CohortDetailPage() {
                   }))}
                 />
               </FormField>
-              <div className="mt-2 text-xs text-gray-500">
-                Debug: {availableLecturers.map(l => l.full_name).join(', ')}
-              </div>
             </div>
           )}
           <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button 
-              variant="secondary" 
-              size="sm"
-              onClick={() => {
-                console.log("Manual lecturer refresh triggered");
-                fetchAvailableLecturers();
-              }}
-            >
+            <Button variant="secondary" size="sm" onClick={() => fetchAvailableLecturers()}>
               Refresh Lecturers
             </Button>
             <Button variant="secondary" onClick={() => setShowAddLecturer(false)}>
